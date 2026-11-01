@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  passwordHash     String
+  displayName      String
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  sessions         Session[]
+  auditLogs        AuditLog[]
+}
+
+model Session {
+  id          String    @id @default(cuid())
+  adminUserId String
+  tokenHash   String    @unique
+  userAgent   String?
+  ipHash      String?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  adminUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([adminUserId])
+  @@index([createdAt])
+}
+
+model SiteSettings {
+  id                    String   @id @default("singleton")
+  siteName              String
+  tagline               String   @default("")
+  heroHeadline          String   @default("")
+  heroSubtext           String   @default("")
+  aboutText             String   @default("")
+  footerText            String   @default("")
+  socialLinks           Json     @default("{}")
+  defaultSeoTitle       String   @default("")
+  defaultSeoDescription String   @default("")
+  contactEmail          String   @default("")
+  updatedAt             DateTime @updatedAt
+}
+
+model RateLimitBucket {
+  key     String   @id
+  count   Int      @default(1)
+  resetAt DateTime @map("reset_at")
+
+  @@index([resetAt])
+}
